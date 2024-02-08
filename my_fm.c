@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 
 #define N_BYTES 50
 #define MAX_APPEND_SIZE 50
@@ -19,11 +20,18 @@ int ec = E_OK;
 
 char readBuffer[MAX_APPEND_SIZE];
 
-char *writeBuffer;
-char *readBuffer;
+char writeBuffer[MAX_APPEND_SIZE];
+
 
 int ProcessCommandLine (char **);
 int CheckDirectory(char *);
+int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, char *filePath, void* buffer);
+int AppendOddNumbers(int startNumber, char *filePath);
+int AppendText(char *text, char* filePath);
+int CreateFile(char *pathName);
+int CreateDirectory(char *pathName);
+int removeFile(char *filePath);
+int removeDirectory(char *directoryPath);
 
 
 int main(int argc, char *argv[])
@@ -72,7 +80,7 @@ int CheckDirectory(char *filePath)
     if (error == -1)
     {
         ec =  errno;
-        return NULL;
+        return E_GENERAL;
     }
     else 
     {
@@ -87,9 +95,13 @@ int CheckDirectory(char *filePath)
 }
 
 
-int NonBlockingOperation(int (*operation)(int, char*, int), int flag, char *filePath, char* buffer)
+int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, char *filePath, void* buffer) //will cause warning with write function as argument, but this is not an issue
 {
-    int fd = open(filePath, flag | O_NONBLOCK);
+    int fd;
+    if (strcmp(filePath, "stdout") == 0)
+        fd = 1;
+    else
+        fd = open(filePath, flag | O_NONBLOCK);
     int status = E_OK;
     if (fd == E_GENERAL)
     {
@@ -108,6 +120,8 @@ int NonBlockingOperation(int (*operation)(int, char*, int), int flag, char *file
                 status == errno;
                 if (status != EAGAIN)
                 {
+                    if (fd <= 2)
+                        return status;
                     int error = close(fd);
                     if (error == E_GENERAL)
                         status = errno;
@@ -115,6 +129,8 @@ int NonBlockingOperation(int (*operation)(int, char*, int), int flag, char *file
                 }
             }
         }
+        if (fd <= 2)
+            return status;
         status = close(fd);
         if (status == E_GENERAL)
             status = errno;
@@ -122,41 +138,45 @@ int NonBlockingOperation(int (*operation)(int, char*, int), int flag, char *file
     }
 }
 
-
-int WriteFirstNBytes(char *filePath)
+int AppendOddNumbers(int startNumber, char *filePath)
 {
-    int fd = open(filePath, O_WRONLY | O_NONBLOCK);
-    int status = E_OK;
-    if (fd == E_GENERAL)
+    int oddNumbers[13];
+    int bytesToWrite = 50;
+    for (int i = 0; i < 13; i ++)
     {
-        return errno;
+        if (startNumber > 200)
+            {
+                bytesToWrite = --i * 4;
+                break;
+            }
+        oddNumbers[i] = startNumber;
+        startNumber += 2;
+    }
+    int status = NonBlockingOperation(&write, O_WRONLY | O_APPEND, filePath, oddNumbers);
+    return status;
+}
+
+int AppendText(char *text, char* filePath) //Wrapper function
+{
+    int status = NonBlockingOperation(&write, O_WRONLY | O_APPEND, filePath, text);
+    return status;
+}
+
+int PrintFirstNBytes(char *fileName)
+{
+    char buffer[MAX_APPEND_SIZE];
+    int status = NonBlockingOperation(&read, O_RDONLY, fileName, buffer);
+    if (status != E_OK)
+    {
+        return status;
     }
     else
     {
-        status = write(fd, writeBuffer, N_BYTES);
-        if (status == E_GENERAL)
-            status = errno;
-        while (status == EAGAIN)
-        {
-            status = write(fd, writeBuffer, N_BYTES);
-            if (status == -1)
-            {
-                status == errno;
-                if (status != EAGAIN)
-                {
-                    int error = close(fd);
-                    if (error == E_GENERAL)
-                        status = errno;
-                    return status;
-                }
-            }
-        }
-        status = close(fd);
-        if (status == E_GENERAL)
-            status = errno;
+        status = NonBlockingOperation(&write, 0, "stdout", buffer);
         return status;
     }
 }
+
 
 int CreateFile(char *pathName)
 {
@@ -170,6 +190,11 @@ int CreateFile(char *pathName)
         return fd;
     }
     
+}
+
+int renameFile(char *filePath, char *newName)
+{
+    int status = rename()
 }
 
 int CreateDirectory(char *pathName)
