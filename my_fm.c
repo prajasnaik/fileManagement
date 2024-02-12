@@ -192,9 +192,20 @@ int CreateFile(char *pathName)
     
 }
 
-int renameFile(char *filePath, char *newName)
+int renameFile(char *oldFilePath, char *newFilePath)
 {
-    int status = rename()
+    if (link(oldFilePath, newFilePath) == E_GENERAL)
+    {
+        return errno;
+    }
+    else 
+    {
+        if (unlink(oldFilePath) == E_GENERAL)
+        {
+            return errno;
+        }
+        else return E_OK;
+    }
 }
 
 int CreateDirectory(char *pathName)
