@@ -3,10 +3,13 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #define N_BYTES 50
 #define MAX_APPEND_SIZE 50
+#define MAX_BUF_SIZE    100
 
 #define E_OK    0
 #define E_GENERAL -1
@@ -14,12 +17,30 @@
 #define IS_FILE 0
 #define IS_DIRECTORY 1
 
-
+#define ENABLE 1
+#define DISABLE 0
 
 int ec = E_OK;
 
-char readBuffer[MAX_APPEND_SIZE];
+int fCreate = DISABLE;
+int fWrite = DISABLE;
+int fDelete = DISABLE;
+int fRename = DISABLE;
+int fAppend = DISABLE;
+int fBinary = DISABLE;
+int fPath = DISABLE;
+int fDirectory = DISABLE;
 
+
+
+
+char readBuffer[MAX_APPEND_SIZE];
+char createPath[MAX_BUF_SIZE];
+char deletePath[MAX_BUF_SIZE];
+char oldPath[MAX_BUF_SIZE];
+char newPath[MAX_BUF_SIZE];
+char appendPath[MAX_BUF_SIZE];
+char writePath[MAX_BUF_SIZE];
 char writeBuffer[MAX_APPEND_SIZE];
 
 
@@ -30,14 +51,19 @@ int AppendOddNumbers(int startNumber, char *filePath);
 int AppendText(char *text, char* filePath);
 int CreateFile(char *pathName);
 int CreateDirectory(char *pathName);
-int removeFile(char *filePath);
-int removeDirectory(char *directoryPath);
+int RemoveFile(char *filePath);
+int RemoveDirectory(char *directoryPath);
+int RenameDirectory(char *oldDirPath, char *newDirPath);
+int RenameFile(char *oldFilePath, char *newFilePath);
+int PerformOperations();
+int PrintFirstNBytes(char *fileName);
 
 
 int main(int argc, char *argv[])
 {
 
     ec = ProcessCommandLine(argv);
+    ec = PerformOperations();
     return ec;
 }
 
@@ -50,21 +76,37 @@ int ProcessCommandLine(char *commandLineArguments[])
         switch (commandLineArguments[argno][1])
         {
         case 'c':
+            fCreate = ENABLE;
+            *createPath = commandLineArguments[argno + 1];
             argno += 2;
             break;
         
         case 'w':
+            fWrite = ENABLE;
+            *writePath = commandLineArguments[argno + 1];
             argno += 2;
             break;
         case 'd':
+            fDelete = ENABLE;
+            *deletePath = commandLineArguments[argno + 1];
             argno += 2;
             break;
         case 'r':
-            argno += 2;
+            fRename = ENABLE;
+            *oldPath = commandLineArguments[argno + 1];
+            *newPath = commandLineArguments[argno + 2];
+            argno += 3;
             break;
         case 'a':
-            argno += 2;
+            fAppend = ENABLE;
+            *appendPath = commandLineArguments[argno + 1];
+            *writeBuffer = commandLineArguments[argno + 2];
+            argno += 3;
             break;
+        case 'b':
+            fBinary = ENABLE;
+            argno += 2;
+
         default:
             return -1;
             break;
@@ -73,23 +115,127 @@ int ProcessCommandLine(char *commandLineArguments[])
     return E_OK; 
 }
 
+int PerformOperations()
+{
+    int status = E_OK;
+    
+    if (fCreate)
+    {
+        status = CheckDirectory(createPath);
+        if (status != E_OK)
+            return status;
+
+        if(fDirectory)
+        {
+            status = CreateDirectory(createPath);
+            if (status != E_OK)
+                return status;
+            fDirectory = DISABLE;
+        }
+        else 
+        {
+            status = CreateFile(createPath);
+            if(status != E_OK)
+                return status;
+        }
+    }
+    if (fAppend)
+    {
+        status = CheckDirectory(appendPath);
+        if (status != E_OK)
+            return status;
+
+        if (!fDirectory)
+        {
+            if (fBinary)
+            {
+                int startNumber = strtol(writeBuffer, NULL, 0);
+                AppendOddNumbers(startNumber, appendPath);
+                if (status != E_OK)
+                    return status;
+            }
+            else
+            {
+                status = AppendText(writeBuffer, appendPath);
+                if (status != E_OK)
+                    return status;
+            }
+        }
+        else
+            fDirectory = DISABLE;
+    }
+    if (fDelete)
+    {
+        status = CheckDirectory(deletePath);
+        if (status != E_OK)
+            return status;
+
+        if (fDirectory)
+        {
+            status = RemoveDirectory(deletePath);
+            if (status != E_OK)
+                return status;
+            fDirectory = DISABLE;
+        }
+        else
+        {
+            status = RemoveFile(deletePath);
+            if (status != E_OK)
+                return status;
+        }
+    }
+    if (fWrite)
+    {
+        status = CheckDirectory(writePath);
+        if (status != E_OK)
+            return status;
+        if (!fDirectory)
+        {
+            status = PrintFirstNBytes(writePath);
+            if (status != E_OK)
+                return status;
+        }
+        else
+            fDirectory = DISABLE;
+
+    }
+
+    if (fRename)
+    {
+        if (fDirectory)
+        {
+            status = RenameDirectory(oldPath, newPath);
+            if (status != E_OK)
+                return status;
+            fDirectory = DISABLE;
+        }
+        else
+        {
+            status = RenameFile(oldPath, newPath);
+            if (status != E_OK)
+                return status;
+        }
+    }
+    return status;
+}
+
 int CheckDirectory(char *filePath)
 {
     struct stat *fileInfo;
     int error = stat(filePath, fileInfo);
     if (error == -1)
     {
-        ec =  errno;
-        return E_GENERAL;
+        return errno;
     }
     else 
     {
         if(S_ISDIR(fileInfo->st_mode))
         {
-            return IS_DIRECTORY;
+            fDirectory = ENABLE;
+            return E_OK;
         }
         else 
-            return IS_FILE;
+            return E_OK;
     }
 
 }
@@ -192,7 +338,7 @@ int CreateFile(char *pathName)
     
 }
 
-int renameFile(char *oldFilePath, char *newFilePath)
+int RenameFile(char *oldFilePath, char *newFilePath)
 {
     if (link(oldFilePath, newFilePath) == E_GENERAL)
     {
@@ -208,6 +354,13 @@ int renameFile(char *oldFilePath, char *newFilePath)
     }
 }
 
+int RenameDirectory(char *oldDirPath, char *newDirPath)
+{
+    if (rename(oldDirPath, newDirPath) == E_GENERAL)
+        return errno;
+    else return E_OK;
+}
+
 int CreateDirectory(char *pathName)
 {
     int status = mkdir(pathName, S_IRWXU);
@@ -218,7 +371,7 @@ int CreateDirectory(char *pathName)
     return E_OK;
 }
 
-int removeFile(char *filePath)
+int RemoveFile(char *filePath)
 {
     int status = unlink(filePath);
     if (status == E_GENERAL)
@@ -228,7 +381,7 @@ int removeFile(char *filePath)
     else 
         return E_OK;
 }
-int removeDirectory(char *directoryPath)
+int RemoveDirectory(char *directoryPath)
 {
     struct stat *directoryInfo;
     int status = stat(directoryPath, directoryInfo);

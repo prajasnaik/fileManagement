@@ -13,6 +13,8 @@ int subtract (int, int);
 int add (int, int);
 int TestFunction(ssize_t (*func) (int, void *, size_t), void *buffer, int flag, char *filePath);
 int Rename(char *oldFileName, char *newFileName);
+int rename2(char *oldFileName, char *newFileName);
+
 
 int main() {
     // int flag = O_WRONLY | O_APPEND;
@@ -28,9 +30,9 @@ int main() {
     //     printf("%d", buffer[0]);
     // }
 
-    Rename("test.txt", "new-text.txt");
+    int ec = rename2("/home/prajas/C_C++/Systems Programming/Assignment-2/test1", "/home/prajas/C_C++/Systems Programming/Assignment-2/test2");
 
-    return 0;
+    return ec;
 }
 
 int TestFunction(ssize_t (*func) (int, void *, size_t), void *buffer, int flag, char *filePath)
@@ -44,8 +46,16 @@ int TestFunction(ssize_t (*func) (int, void *, size_t), void *buffer, int flag, 
 int Rename(char *oldFileName, char *newFileName)
 {
     int status = link(oldFileName, newFileName);
+    status = errno;
     status = unlink(oldFileName);
     return 0;
+}
+
+int rename2(char *oldFileName, char *newFileName)
+{
+    int status = rename(oldFileName, newFileName);
+    
+    return errno;
 }
 
 int subtract(int a, int b)
