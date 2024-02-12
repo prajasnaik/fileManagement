@@ -18,26 +18,25 @@ int rename2(char *oldFileName, char *newFileName);
 
 int main() {
     // int flag = O_WRONLY | O_APPEND;
-    // //char buffer[] = "I am appending to the end.";
-    // int buffer2[] = {1, 2, 3, 4, 5, 6};
-    // int error = TestFunction(&write, buffer2, flag, "test.txt");
-    // int fd = open("test.txt", O_RDONLY);
-    // int error = 4;
-    // int buffer[1];
+    // char buffer[] = "I am appending to the end.";
+    // // int buffer2[] = {1, 2, 3, 4, 5, 6};
+    // int error = TestFunction(&write, buffer, flag, "my_fm");
+    printf("%d", sizeof(unsigned short int));
     // while(error != 0)
     // {
     //     error = read(fd, buffer, 4);
     //     printf("%d", buffer[0]);
     // }
 
-    int ec = rename2("/home/prajas/C_C++/Systems Programming/Assignment-2/test1", "/home/prajas/C_C++/Systems Programming/Assignment-2/test2");
+    // int ec = rename2("/home/prajas/C_C++/Systems Programming/Assignment-2/test1", "/home/prajas/C_C++/Systems Programming/Assignment-2/test2");
 
-    return ec;
+    return 0;
 }
 
 int TestFunction(ssize_t (*func) (int, void *, size_t), void *buffer, int flag, char *filePath)
 {
     int fd = open(filePath, flag);
+    printf("%d", errno);
     int error = (*func) (fd, buffer, 24);
 
     return error;
