@@ -46,7 +46,7 @@ char writeBuffer[MAX_APPEND_SIZE];
 
 int ProcessCommandLine (char **);
 int CheckDirectory(char *);
-int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, char *filePath, void* buffer);
+int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, char *filePath, void* buffer, int noOfBytes);
 int AppendOddNumbers(int startNumber, char *filePath);
 int AppendText(char *text, char* filePath);
 int CreateFile(char *pathName);
@@ -83,7 +83,7 @@ int ProcessCommandLine(char *commandLineArguments[])
         
         case 'w':
             fWrite = ENABLE;
-            *writePath = commandLineArguments[argno + 1];
+            strcpy(commandLineArguments[argno + 1], writePath); 
             argno += 2;
             break;
         case 'd':
@@ -241,7 +241,7 @@ int CheckDirectory(char *filePath)
 }
 
 
-int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, char *filePath, void* buffer) //will cause warning with write function as argument, but this is not an issue
+int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, char *filePath, void* buffer, int noOfBytes) //will cause warning with write function as argument, but this is not an issue
 {
     int fd;
     if (strcmp(filePath, "stdout") == 0)
@@ -298,27 +298,27 @@ int AppendOddNumbers(int startNumber, char *filePath)
         oddNumbers[i] = startNumber;
         startNumber += 2;
     }
-    int status = NonBlockingOperation(&write, O_WRONLY | O_APPEND, filePath, oddNumbers);
+    int status = NonBlockingOperation(&write, O_WRONLY | O_APPEND, filePath, oddNumbers, bytesToWrite);
     return status;
 }
 
 int AppendText(char *text, char* filePath) //Wrapper function
 {
-    int status = NonBlockingOperation(&write, O_WRONLY | O_APPEND, filePath, text);
+    int status = NonBlockingOperation(&write, O_WRONLY | O_APPEND, filePath, text, N_BYTES);
     return status;
 }
 
 int PrintFirstNBytes(char *fileName)
 {
     char buffer[MAX_APPEND_SIZE];
-    int status = NonBlockingOperation(&read, O_RDONLY, fileName, buffer);
+    int status = NonBlockingOperation(&read, O_RDONLY, fileName, buffer, N_BYTES);
     if (status != E_OK)
     {
         return status;
     }
     else
     {
-        status = NonBlockingOperation(&write, 0, "stdout", buffer);
+        status = NonBlockingOperation(&write, 0, "stdout", buffer, N_BYTES);
         return status;
     }
 }
