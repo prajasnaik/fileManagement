@@ -35,16 +35,17 @@ int fDirectory = DISABLE;
 
 
 char readBuffer[MAX_APPEND_SIZE];
-char createPath[MAX_BUF_SIZE];
-char deletePath[MAX_BUF_SIZE];
-char oldPath[MAX_BUF_SIZE];
-char newPath[MAX_BUF_SIZE];
-char appendPath[MAX_BUF_SIZE];
-char writePath[MAX_BUF_SIZE];
+char *createPath;
+char *deletePath;
+char *oldPath;
+char *newPath;
+char *appendPath;
+char *writePath;
+char *appendBuffer;
 char writeBuffer[MAX_APPEND_SIZE];
 
 
-int ProcessCommandLine (char **);
+int ProcessCommandLine (char **, int);
 int CheckDirectory(char *);
 int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, char *filePath, void* buffer, int noOfBytes);
 int AppendOddNumbers(int startNumber, char *filePath);
@@ -61,52 +62,57 @@ int PrintFirstNBytes(char *fileName);
 
 int main(int argc, char *argv[])
 {
-
-    ec = ProcessCommandLine(argv);
+    char *args[] = {"./my_fm","-a", "renameTest.txt", "51", "-b"};
+    argc = 5;
+    ec = ProcessCommandLine(args, argc);
     ec = PerformOperations();
     return ec;
 }
 
 
-int ProcessCommandLine(char *commandLineArguments[])
+int ProcessCommandLine(char *commandLineArguments[], int argCount)
 {
     int argno = 1;
-    while(argno < 2)
+    while(argno < argCount)
     {
         switch (commandLineArguments[argno][1])
         {
         case 'c':
             fCreate = ENABLE;
-            *createPath = commandLineArguments[argno + 1];
+            createPath = commandLineArguments[argno + 1];
             argno += 2;
             break;
         
         case 'w':
             fWrite = ENABLE;
-            strcpy(commandLineArguments[argno + 1], writePath); 
+            writePath = commandLineArguments[argno + 1]; 
             argno += 2;
             break;
         case 'd':
             fDelete = ENABLE;
-            *deletePath = commandLineArguments[argno + 1];
+            deletePath = commandLineArguments[argno + 1];
             argno += 2;
             break;
         case 'r':
             fRename = ENABLE;
-            *oldPath = commandLineArguments[argno + 1];
-            *newPath = commandLineArguments[argno + 2];
+            oldPath = commandLineArguments[argno + 1];
+            newPath = commandLineArguments[argno + 2];
             argno += 3;
             break;
         case 'a':
             fAppend = ENABLE;
-            *appendPath = commandLineArguments[argno + 1];
-            *writeBuffer = commandLineArguments[argno + 2];
+            appendPath = commandLineArguments[argno + 1];
+            appendBuffer = commandLineArguments[argno + 2]; 
             argno += 3;
             break;
         case 'b':
             fBinary = ENABLE;
             argno += 2;
-
+            break;
+        case 'f':
+            fDirectory = ENABLE;
+            argno += 2;
+            break;
         default:
             return -1;
             break;
@@ -121,10 +127,6 @@ int PerformOperations()
     
     if (fCreate)
     {
-        status = CheckDirectory(createPath);
-        if (status != E_OK)
-            return status;
-
         if(fDirectory)
         {
             status = CreateDirectory(createPath);
@@ -149,14 +151,14 @@ int PerformOperations()
         {
             if (fBinary)
             {
-                int startNumber = strtol(writeBuffer, NULL, 0);
+                int startNumber = strtol(appendBuffer, NULL, 0);
                 AppendOddNumbers(startNumber, appendPath);
                 if (status != E_OK)
                     return status;
             }
             else
             {
-                status = AppendText(writeBuffer, appendPath);
+                status = AppendText(appendBuffer, appendPath);
                 if (status != E_OK)
                     return status;
             }
@@ -202,6 +204,9 @@ int PerformOperations()
 
     if (fRename)
     {
+        status = CheckDirectory(oldPath);   
+        if (status != E_OK)
+            return status;
         if (fDirectory)
         {
             status = RenameDirectory(oldPath, newPath);
@@ -221,15 +226,15 @@ int PerformOperations()
 
 int CheckDirectory(char *filePath)
 {
-    struct stat *fileInfo;
-    int error = stat(filePath, fileInfo);
+    struct stat fileInfo;
+    int error = stat(filePath, &fileInfo);
     if (error == -1)
     {
         return errno;
     }
     else 
     {
-        if(S_ISDIR(fileInfo->st_mode))
+        if(S_ISDIR(fileInfo.st_mode))
         {
             fDirectory = ENABLE;
             return E_OK;
@@ -263,7 +268,7 @@ int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, c
             status = (*operation)(fd, buffer, N_BYTES);
             if (status == -1)
             {
-                status == errno;
+                status = errno;
                 if (status != EAGAIN)
                 {
                     if (fd <= 2)
@@ -286,9 +291,13 @@ int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, c
 
 int AppendOddNumbers(int startNumber, char *filePath)
 {
-    int oddNumbers[13];
+    short int oddNumbers[25];
     int bytesToWrite = 50;
-    for (int i = 0; i < 13; i ++)
+    if (startNumber < 50)
+        return E_GENERAL;
+    else if (startNumber % 2 == 0)
+        startNumber ++;
+    for (int i = 0; i < 25; i ++)
     {
         if (startNumber > 200)
             {
@@ -329,11 +338,14 @@ int CreateFile(char *pathName)
     int fd = creat(pathName, S_IRWXU);
     if (fd == E_GENERAL)
     {
-        ec =  errno;
+        return errno;
     }
     else 
     {
-        return fd;
+        int status = close(fd);
+        if (status == E_GENERAL)
+            return errno;
+        return E_OK;
     }
     
 }
@@ -383,9 +395,7 @@ int RemoveFile(char *filePath)
 }
 int RemoveDirectory(char *directoryPath)
 {
-    struct stat *directoryInfo;
-    int status = stat(directoryPath, directoryInfo);
-    status = rmdir(directoryPath);
+    int status = rmdir(directoryPath);
     if (status == E_GENERAL)
     {
         return errno;

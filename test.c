@@ -21,12 +21,18 @@ int main() {
     // char buffer[] = "I am appending to the end.";
     // // int buffer2[] = {1, 2, 3, 4, 5, 6};
     // int error = TestFunction(&write, buffer, flag, "my_fm");
-    printf("%d", sizeof(unsigned short int));
-    // while(error != 0)
-    // {
-    //     error = read(fd, buffer, 4);
-    //     printf("%d", buffer[0]);
-    // }
+    // printf("%d", sizeof(unsigned short int));
+    // struct stat *fileInfo;
+    // int result = stat("/home/prajas/C_C++", fileInfo);
+    // result =errno;
+    int fd = open("renameTest.txt", O_RDONLY);
+    short int buffer[1];
+    int error = 1;
+    while(error != 0)
+    {
+        error = read(fd, buffer, 2);
+        printf("%hi", buffer[0]);
+    }
 
     // int ec = rename2("/home/prajas/C_C++/Systems Programming/Assignment-2/test1", "/home/prajas/C_C++/Systems Programming/Assignment-2/test2");
 
