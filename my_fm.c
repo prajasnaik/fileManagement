@@ -65,13 +65,18 @@ int         RenameDirectory         (char *, char *);
 int         RenameFile              (char *, char *);
 int         PerformOperations       ();
 int         PrintFirstNBytes        (char *);
+int         Help                    ();
 
 // Main function
 int main(int argc, char *argv[])
 {
-    
-    ec = ProcessCommandLine(argv, argc);
-    ec = PerformOperations();
+    if (argc == 1)
+            ec = Help();
+    else
+    {
+        ec = ProcessCommandLine(argv, argc);
+        ec = PerformOperations();
+    }
     return ec;
 }
 
@@ -126,12 +131,27 @@ int ProcessCommandLine(char *commandLineArguments[], int argCount)
             argno += 1;
             break;
         default:
-            return -1;
+            return E_OK;
             break;
         }
     } 
     return E_OK; 
 }
+
+// function: Help
+//      Provides a basic message on how to use the program.
+//  @param: None
+//  @return: Integer Error Code
+int Help()
+{
+    char *helpMessage = "\tUsage:\n\t./my_fm -c <Path> -w <Path> -a <TextFilePath> <string to append> -r <OldPath> <NewPath> -d <Path>\n\tFor more info, please refer to README file\n";
+    int length = strlen(helpMessage);
+    int error = write(STDOUT_FILENO, helpMessage, length);
+    if (error == E_GENERAL)
+        return errno;
+    else return E_OK;
+}
+
 
 //  function: PerformOperations
 //      This function calls and executes appropriate functions based on
@@ -251,7 +271,7 @@ int CheckDirectory(char *filePath)
 {
     struct stat fileInfo;
     int error = stat(filePath, &fileInfo);
-    if (error == -1)
+    if (error == E_GENERAL)
     {
         return errno;
     }
@@ -281,7 +301,7 @@ int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, c
 {
     int fd;
     if (strcmp(filePath, "stdout") == 0)
-        fd = 1;
+        fd = STDOUT_FILENO;
     else
         fd = open(filePath, flag | O_NONBLOCK);
     int status = E_OK;
@@ -297,12 +317,12 @@ int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, c
         while (status == EAGAIN) // Repeat till call succeeds, can add extra code if we want to do something else while the operation is completing.
         {
             status = (*operation)(fd, buffer, noOfBytes);
-            if (status == -1)
+            if (status == E_GENERAL)
             {
                 status = errno;
                 if (status != EAGAIN)
                 {
-                    if (fd <= 2)
+                    if (fd <= STDERR_FILENO)
                         return status;
                     int error = close(fd);
                     if (error == E_GENERAL)
@@ -311,7 +331,7 @@ int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, c
                 }
             }
         }
-        if (fd <= 2)
+        if (fd <= STDERR_FILENO)
             return E_OK;
         status = close(fd);
         if (status == E_GENERAL)
