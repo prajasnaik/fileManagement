@@ -1,5 +1,7 @@
 // @authors: Prajas Naik and Kalash Shah
+// @date: 13 February 2024
 // Simple file management program
+
 
 // Include Statements
 #include <sys/types.h>
@@ -67,9 +69,8 @@ int         PrintFirstNBytes        (char *);
 // Main function
 int main(int argc, char *argv[])
 {
-    char *args[] = {"my_fm", "-c", "directory10", "-f", "-a", "test.txt", "Random Stuff"};
-    argc = 7;
-    ec = ProcessCommandLine(args, argc);
+    
+    ec = ProcessCommandLine(argv, argc);
     ec = PerformOperations();
     return ec;
 }
@@ -182,26 +183,7 @@ int PerformOperations()
         else
             fDirectory = DISABLE;
     }
-    if (fDelete)
-    {
-        status = CheckDirectory(deletePath);
-        if (status != E_OK)
-            return status;
 
-        if (fDirectory)
-        {
-            status = RemoveDirectory(deletePath);
-            if (status != E_OK)
-                return status;
-            fDirectory = DISABLE;
-        }
-        else
-        {
-            status = RemoveFile(deletePath);
-            if (status != E_OK)
-                return status;
-        }
-    }
     if (fWrite)
     {
         status = CheckDirectory(writePath);
@@ -233,6 +215,26 @@ int PerformOperations()
         else
         {
             status = RenameFile(oldPath, newPath);
+            if (status != E_OK)
+                return status;
+        }
+    }
+        if (fDelete)
+    {
+        status = CheckDirectory(deletePath);
+        if (status != E_OK)
+            return status;
+
+        if (fDirectory)
+        {
+            status = RemoveDirectory(deletePath);
+            if (status != E_OK)
+                return status;
+            fDirectory = DISABLE;
+        }
+        else
+        {
+            status = RemoveFile(deletePath);
             if (status != E_OK)
                 return status;
         }
