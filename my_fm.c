@@ -62,9 +62,8 @@ int PrintFirstNBytes(char *fileName);
 
 int main(int argc, char *argv[])
 {
-    char *args[] = {"./my_fm","-a", "renameTest.txt", "51", "-b"};
-    argc = 5;
-    ec = ProcessCommandLine(args, argc);
+
+    ec = ProcessCommandLine(argv, argc);
     ec = PerformOperations();
     return ec;
 }
