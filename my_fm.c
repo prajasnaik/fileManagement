@@ -1,3 +1,7 @@
+// @authors: Prajas Naik and Kalash Shah
+// Simple file management program
+
+// Include Statements
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -7,67 +11,77 @@
 #include <stdio.h>
 #include <string.h>
 
-#define N_BYTES 50
-#define MAX_APPEND_SIZE 50
-#define MAX_BUF_SIZE    100
 
-#define E_OK    0
-#define E_GENERAL -1
+//Define Statements
+#define     N_BYTES                 50
+#define     MAX_APPEND_SIZE         50
+#define     MAX_BUF_SIZE            100
+#define     E_OK                    0
+#define     E_GENERAL               -1
+#define     IS_FILE                 0
+#define     IS_DIRECTORY            1
+#define     ENABLE                  1
+#define     DISABLE                 0
 
-#define IS_FILE 0
-#define IS_DIRECTORY 1
+// Global Variable for Error Code
+int         ec          =           E_OK;
 
-#define ENABLE 1
-#define DISABLE 0
+// Global Variable Flags for deciding which operation to perform
+int         fCreate     =           DISABLE;
+int         fWrite      =           DISABLE;
+int         fDelete     =           DISABLE;
+int         fRename     =           DISABLE;
+int         fAppend     =           DISABLE;
+int         fBinary     =           DISABLE;
+int         fPath       =           DISABLE;
+int         fDirectory  =           DISABLE;
 
-int ec = E_OK;
+// Buffers for storing paths for each function
+char        *createPath;
+char        *deletePath;
+char        *oldPath;
+char        *newPath;
+char        *appendPath;
+char        *writePath;
+char        *appendBuffer;
 
-int fCreate = DISABLE;
-int fWrite = DISABLE;
-int fDelete = DISABLE;
-int fRename = DISABLE;
-int fAppend = DISABLE;
-int fBinary = DISABLE;
-int fPath = DISABLE;
-int fDirectory = DISABLE;
+// Buffer for storing values to read and write
+char        readBuffer              [MAX_APPEND_SIZE];
+char        writeBuffer             [MAX_APPEND_SIZE];
 
+// Function Declarations
+int         ProcessCommandLine      (char **, int);
+int         CheckDirectory          (char *);
+int         NonBlockingOperation    (ssize_t (*) (int, void *, size_t), int, char *, void*, int );
+int         AppendOddNumbers        (int, char *);
+int         AppendText              (char *, char*);
+int         CreateFile              (char *);
+int         CreateDirectory         (char *);
+int         RemoveFile              (char *);
+int         RemoveDirectory         (char *);
+int         RenameDirectory         (char *, char *);
+int         RenameFile              (char *, char *);
+int         PerformOperations       ();
+int         PrintFirstNBytes        (char *);
 
-
-
-char readBuffer[MAX_APPEND_SIZE];
-char *createPath;
-char *deletePath;
-char *oldPath;
-char *newPath;
-char *appendPath;
-char *writePath;
-char *appendBuffer;
-char writeBuffer[MAX_APPEND_SIZE];
-
-
-int ProcessCommandLine (char **, int);
-int CheckDirectory(char *);
-int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, char *filePath, void* buffer, int noOfBytes);
-int AppendOddNumbers(int startNumber, char *filePath);
-int AppendText(char *text, char* filePath);
-int CreateFile(char *pathName);
-int CreateDirectory(char *pathName);
-int RemoveFile(char *filePath);
-int RemoveDirectory(char *directoryPath);
-int RenameDirectory(char *oldDirPath, char *newDirPath);
-int RenameFile(char *oldFilePath, char *newFilePath);
-int PerformOperations();
-int PrintFirstNBytes(char *fileName);
-
-
+// Main function
 int main(int argc, char *argv[])
 {
-    ec = ProcessCommandLine(argv, argc);
+    char *args[] = {"my_fm", "-c", "directory10", "-f", "-a", "test.txt", "Random Stuff"};
+    argc = 7;
+    ec = ProcessCommandLine(args, argc);
     ec = PerformOperations();
     return ec;
 }
 
-
+// function: ProcessCommandLine
+//      This function takes the command line arguments and appropriately sets 
+//      flags for which operations need to be performed. It also extracts 
+//      appropiate pointers
+//  @param: commandLineArguments - Pointer to array containing command line 
+//          arguments
+//  @param: argCount - Integer count of total  number of command line arguments
+//  @return: Integer error code
 int ProcessCommandLine(char *commandLineArguments[], int argCount)
 {
     int argno = 1;
@@ -80,7 +94,6 @@ int ProcessCommandLine(char *commandLineArguments[], int argCount)
             createPath = commandLineArguments[argno + 1];
             argno += 2;
             break;
-        
         case 'w':
             fWrite = ENABLE;
             writePath = commandLineArguments[argno + 1]; 
@@ -109,7 +122,7 @@ int ProcessCommandLine(char *commandLineArguments[], int argCount)
             break;
         case 'f':
             fDirectory = ENABLE;
-            argno += 2;
+            argno += 1;
             break;
         default:
             return -1;
@@ -119,6 +132,11 @@ int ProcessCommandLine(char *commandLineArguments[], int argCount)
     return E_OK; 
 }
 
+//  function: PerformOperations
+//      This function calls and executes appropriate functions based on
+//      which flags were set after processing command line.
+//  @param: None
+//  @return: Integer Error Code
 int PerformOperations()
 {
     int status = E_OK;
@@ -222,6 +240,11 @@ int PerformOperations()
     return status;
 }
 
+//  function: CheckDirectory
+//      This function checks if a given path is a file or directory and 
+//      sets the fDirectory flag appropriately
+//  @param: char pointer to the file path we want to check
+//  @return: Integer error code
 int CheckDirectory(char *filePath)
 {
     struct stat fileInfo;
@@ -243,7 +266,11 @@ int CheckDirectory(char *filePath)
 
 }
 
-
+//  function: NonBlockingOperation
+//      This is somewhat of wrapper function used to call appropriate read/write system call
+//      using function pointers. 
+//  @param: Pointer to a function with the same declaration as read/write system call
+//  @param: Integer flag
 int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, char *filePath, void* buffer, int noOfBytes) //will cause warning with write function as argument, but this is not an issue
 {
     int fd;
@@ -258,12 +285,12 @@ int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, c
     }
     else
     {
-        status = (*operation)(fd, buffer, N_BYTES);
+        status = (*operation)(fd, buffer, noOfBytes);
         if (status == E_GENERAL)
             status = errno;
         while (status == EAGAIN)
         {
-            status = (*operation)(fd, buffer, N_BYTES);
+            status = (*operation)(fd, buffer, noOfBytes);
             if (status == -1)
             {
                 status = errno;
@@ -311,7 +338,10 @@ int AppendOddNumbers(int startNumber, char *filePath)
 
 int AppendText(char *text, char* filePath) //Wrapper function
 {
-    int status = NonBlockingOperation(&write, O_WRONLY | O_APPEND, filePath, text, N_BYTES);
+    int bytesToWrite = strlen(text);
+    if (bytesToWrite > N_BYTES)
+        bytesToWrite = N_BYTES;
+    int status = NonBlockingOperation(&write, O_WRONLY | O_APPEND, filePath, text, bytesToWrite);
     return status;
 }
 
