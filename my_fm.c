@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <stdio.h> // used only for rename system call
 #include <string.h>
 
 
@@ -118,7 +118,7 @@ int ProcessCommandLine(char *commandLineArguments[], int argCount)
             break;
         case 'b':
             fBinary = ENABLE;
-            argno += 2;
+            argno += 1;
             break;
         case 'f':
             fDirectory = ENABLE;
@@ -167,7 +167,7 @@ int PerformOperations()
         {
             if (fBinary)
             {
-                int startNumber = strtol(appendBuffer, NULL, 0);
+                int startNumber = strtol(appendBuffer, NULL, 0);    // Convert start number to int base 10
                 AppendOddNumbers(startNumber, appendPath);
                 if (status != E_OK)
                     return status;
@@ -270,7 +270,11 @@ int CheckDirectory(char *filePath)
 //      This is somewhat of wrapper function used to call appropriate read/write system call
 //      using function pointers. 
 //  @param: Pointer to a function with the same declaration as read/write system call
-//  @param: Integer flag
+//  @param: Integer flag to pass to system call
+//  @param: pointer to file path
+//  @param: buffer to use for writing/reading. Can be any data type.
+//  @param: number of bytes to write/read.
+//  @return: integer error code
 int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, char *filePath, void* buffer, int noOfBytes) //will cause warning with write function as argument, but this is not an issue
 {
     int fd;
@@ -288,7 +292,7 @@ int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, c
         status = (*operation)(fd, buffer, noOfBytes);
         if (status == E_GENERAL)
             status = errno;
-        while (status == EAGAIN)
+        while (status == EAGAIN) // Repeat till call succeeds, can add extra code if we want to do something else while the operation is completing.
         {
             status = (*operation)(fd, buffer, noOfBytes);
             if (status == -1)
@@ -314,11 +318,17 @@ int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, c
     }
 }
 
+// function: ApppendOddNumbers
+//      Uses the non-blocking operation function to write the first 50 odd numbers
+//      starting from number specified by user to the command line to a file.
+//  @param: Integer number to start from
+//  @param: Pointer to file path
+//  @return: Integer Error Code
 int AppendOddNumbers(int startNumber, char *filePath)
 {
     short int oddNumbers[25];
     int bytesToWrite = 50;
-    if (startNumber < 50)
+    if (startNumber < 50) // To ensure at most 50 bytes get written
         return E_GENERAL;
     else if (startNumber % 2 == 0)
         startNumber ++;
@@ -326,7 +336,7 @@ int AppendOddNumbers(int startNumber, char *filePath)
     {
         if (startNumber > 200)
             {
-                bytesToWrite = --i * 4;
+                bytesToWrite = i * 2; // In case number exceeds 200, we stop writing
                 break;
             }
         oddNumbers[i] = startNumber;
@@ -336,15 +346,26 @@ int AppendOddNumbers(int startNumber, char *filePath)
     return status;
 }
 
+// function: ApppendOddNumbers
+//      Uses the non-blocking operation function to write the atmost 50 bytes given
+//      by user to the command line to a file.
+//  @param: Pointer to text to write
+//  @param: Pointer to file path
+//  @return: Integer Error Code
 int AppendText(char *text, char* filePath) //Wrapper function
 {
     int bytesToWrite = strlen(text);
     if (bytesToWrite > N_BYTES)
-        bytesToWrite = N_BYTES;
+        bytesToWrite = N_BYTES; //To ensure at most 50 bytes are written
     int status = NonBlockingOperation(&write, O_WRONLY | O_APPEND, filePath, text, bytesToWrite);
     return status;
 }
 
+//  function: PrintFirstNBytes
+//      Prints the first 50 bytes from a file to the command line using non-blocking
+//      read function
+//  @param: pointer to file name
+//  @return: Integer Error Code
 int PrintFirstNBytes(char *fileName)
 {
     char buffer[MAX_APPEND_SIZE];
@@ -360,10 +381,13 @@ int PrintFirstNBytes(char *fileName)
     }
 }
 
-
+//  function: CreateFile
+//      Creates a file with specified file name
+//  @param: pointer to file path you want to create
+//  @return: Integer Error Code
 int CreateFile(char *pathName)
 {
-    int fd = creat(pathName, S_IRWXU);
+    int fd = creat(pathName, S_IRWXU); // User has read, write, and execute access, can be made input based in the future
     if (fd == E_GENERAL)
     {
         return errno;
@@ -378,9 +402,14 @@ int CreateFile(char *pathName)
     
 }
 
+//  function: RenameFile
+//      Renames file using link and unlink
+//  @param: Pointer to old file name / path
+//  @param: Pointer to new file name / path
+//  @return: Integer error code
 int RenameFile(char *oldFilePath, char *newFilePath)
 {
-    if (link(oldFilePath, newFilePath) == E_GENERAL)
+    if (link(oldFilePath, newFilePath) == E_GENERAL) // Done with link and unlink for learning purposes, can be done with rename system call
     {
         return errno;
     }
@@ -394,6 +423,11 @@ int RenameFile(char *oldFilePath, char *newFilePath)
     }
 }
 
+//  function: RenameDirectory
+//      Renames directory using rename system call
+//  @param: Pointer to old directory name / path
+//  @param: Pointer to new directory name / path
+//  @return: Integer error code
 int RenameDirectory(char *oldDirPath, char *newDirPath)
 {
     if (rename(oldDirPath, newDirPath) == E_GENERAL)
@@ -401,9 +435,13 @@ int RenameDirectory(char *oldDirPath, char *newDirPath)
     else return E_OK;
 }
 
+//  function: CreateDirectory
+//      Creates a new directory
+//  @param: Pointer to pathname
+//  @return: Integer error code
 int CreateDirectory(char *pathName)
 {
-    int status = mkdir(pathName, S_IRWXU);
+    int status = mkdir(pathName, S_IRWXU); // User has read, write, and execute access, can be made input based in the future
     if (status == E_GENERAL)
     {
         return errno;
@@ -411,6 +449,10 @@ int CreateDirectory(char *pathName)
     return E_OK;
 }
 
+//  function: RemoveFile
+//      Deletes specified file if no other links exist, else unlinks
+//  @param: pointer to file path to delete / unlink
+//  @return: Integer error code
 int RemoveFile(char *filePath)
 {
     int status = unlink(filePath);
@@ -421,6 +463,11 @@ int RemoveFile(char *filePath)
     else 
         return E_OK;
 }
+
+//  function: RemoveDirectory
+//      Deletes specified directory if it is empty
+//  @param: pointer to firectory path to delete
+//  @return: Integer error code
 int RemoveDirectory(char *directoryPath)
 {
     int status = rmdir(directoryPath);
