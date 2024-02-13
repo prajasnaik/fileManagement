@@ -62,7 +62,6 @@ int PrintFirstNBytes(char *fileName);
 
 int main(int argc, char *argv[])
 {
-
     ec = ProcessCommandLine(argv, argc);
     ec = PerformOperations();
     return ec;
@@ -280,7 +279,7 @@ int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, c
             }
         }
         if (fd <= 2)
-            return status;
+            return E_OK;
         status = close(fd);
         if (status == E_GENERAL)
             status = errno;
