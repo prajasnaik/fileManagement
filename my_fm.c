@@ -331,7 +331,7 @@ int AppendOddNumbers(int startNumber, char *filePath)
     short int oddNumbers[25];
     int bytesToWrite = 50;
     if (startNumber < 50) // To ensure at most 50 bytes get written
-        return E_GENERAL;
+        return E_OK;
     else if (startNumber % 2 == 0)
         startNumber ++;
     for (int i = 0; i < 25; i ++)
