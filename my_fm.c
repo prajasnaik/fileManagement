@@ -348,11 +348,11 @@ int NonBlockingOperation(ssize_t (*operation) (int, void *, size_t), int flag, c
 //  @return: Integer Error Code
 int AppendOddNumbers(int startNumber, char *filePath)
 {
-    short int oddNumbers[25];
+    short int oddNumbers[25]; // To ensure at most 50 bytes get written
     int bytesToWrite = 50;
-    if (startNumber < 50) // To ensure at most 50 bytes get written
+    if (startNumber < 50) // As per assignment, to ensure the start number is not below 50
         return E_OK;
-    else if (startNumber % 2 == 0)
+    else if (startNumber % 2 == 0) //Starting with only odd numbers
         startNumber ++;
     for (int i = 0; i < 25; i ++)
     {
