@@ -97,27 +97,37 @@ int ProcessCommandLine(char *commandLineArguments[], int argCount)
         {
         case 'c':
             fCreate = ENABLE;
+            if (argno + 1 == argCount)
+                return E_GENERAL;
             createPath = commandLineArguments[argno + 1];
             argno += 2;
             break;
         case 'w':
             fWrite = ENABLE;
+            if (argno + 1 == argCount)
+                return E_GENERAL;
             writePath = commandLineArguments[argno + 1]; 
             argno += 2;
             break;
         case 'd':
             fDelete = ENABLE;
+            if (argno + 1 == argCount)
+                return E_GENERAL;
             deletePath = commandLineArguments[argno + 1];
             argno += 2;
             break;
         case 'r':
             fRename = ENABLE;
+            if (argno + 2 == argCount)
+                return E_GENERAL;
             oldPath = commandLineArguments[argno + 1];
             newPath = commandLineArguments[argno + 2];
             argno += 3;
             break;
         case 'a':
             fAppend = ENABLE;
+            if (argno + 2 == argCount)
+                return E_GENERAL;
             appendPath = commandLineArguments[argno + 1];
             appendBuffer = commandLineArguments[argno + 2]; 
             argno += 3;
@@ -239,7 +249,7 @@ int PerformOperations()
                 return status;
         }
     }
-        if (fDelete)
+    if (fDelete)
     {
         status = CheckDirectory(deletePath);
         if (status != E_OK)
